@@ -76,7 +76,7 @@ def get_viral_badge(score):
         return f"🌱 Early Signal ({score}/100)"
 
 st.title("🇸🇦 Viral Saudi F&B & Cafe Trend Tracker (Marketer Edition)")
-st.markdown("Monitor real-time Saudi social signals, viral cafe crazes, and influencer food trends with geo-targeting.")
+st.markdown("Monitor real-time Saudi social signals, viral cafe crazes, and influencer food trends with geo-targeting & engagement KPIs.")
 
 df = load_data()
 
@@ -113,6 +113,22 @@ else:
 
     st.markdown("---")
 
+    # 📊 Engagement KPIs & Visual Analytics Section for Marketers
+    st.subheader("📈 Marketing Analytics & Trend Velocity (مؤشرات الأداء وسرعة الهبة)")
+    
+    chart_col1, chart_col2 = st.columns(2)
+    
+    with chart_col1:
+        st.markdown("**📊 تباين قوة الهبات الفيروسية (Viral Strength Distribution)**")
+        score_counts = filtered_df['viral_badge'].value_counts()
+        st.bar_chart(score_counts)
+        
+    with chart_col2:
+        st.markdown("**📍 تركز الترندات حسب المدن السعودية (Geo-Concentration)**")
+        city_counts = filtered_df['target_city'].value_counts()
+        st.bar_chart(city_counts)
+
+    st.markdown("---")
     st.subheader("📊 Live Saudi F&B Trends & Geo Breakdown")
     
     display_df = filtered_df[['observation_id', 'target_city', 'source_name', 'viral_badge', 'raw_content', 'source_url', 'date_logged']].copy()
