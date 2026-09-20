@@ -34,9 +34,6 @@ def load_data():
         return pd.DataFrame()
 
 def extract_city(text):
-    """
-    استخراج المدينة السعودية المستهدفة تلقائياً من محتوى المنشور
-    """
     text_lower = str(text).lower()
     if any(city in text_lower for city in ['الرياض', 'riyadh', 'العاصمة']):
         return 'الرياض 🏙️'
@@ -86,22 +83,18 @@ df = load_data()
 if df.empty:
     st.warning("No trends found in the database yet. Run your RSS collector to fetch fresh Saudi social data!")
 else:
-    # حساب الفيروسية والمدينة لكل السجلات
     df['viral_score'] = df.apply(calculate_viral_score, axis=1)
     df['viral_badge'] = df['viral_score'].apply(get_viral_badge)
     df['target_city'] = df['raw_content'].apply(extract_city)
 
     st.sidebar.header("🔍 Filter Social Trends (Marketer Tools)")
     
-    # 1. فلتر المنصة
     sources = ["All"] + list(df['source_name'].dropna().unique())
     selected_source = st.sidebar.selectbox("Filter by Platform", sources)
     
-    # 2. فلتر المدينة الجديد (Geo-Targeting)
     cities = ["All"] + list(df['target_city'].dropna().unique())
     selected_city = st.sidebar.selectbox("📍 Filter by Saudi City", cities)
 
-    # 3. فلتر التصنيف
     categories = ["All"] + list(df['suggested_category'].dropna().unique())
     selected_category = st.sidebar.selectbox("Filter by Trend Type", categories)
 
@@ -122,7 +115,6 @@ else:
 
     st.subheader("📊 Live Saudi F&B Trends & Geo Breakdown")
     
-    # تجهيز جدول العرض مع عمود المدينة الجديد والروابط المباشرة
     display_df = filtered_df[['observation_id', 'target_city', 'source_name', 'viral_badge', 'raw_content', 'source_url', 'date_logged']].copy()
     
     st.dataframe(
@@ -138,25 +130,30 @@ else:
 
     st.markdown("---")
     
-    # قسم توليد أفكار فيديوهات السوشيال ميديا (Claude Powered Simulation)
-    st.subheader("🎬 Claude AI Reel / TikTok Content Generator")
-    st.markdown("اختر ترنداً من القائمة أدناه ليقوم Claude بتوليد سكريبت فيديو تيك توك/انستقرام كامل له:")
+    st.subheader("🎯 Claude AI Influencer Campaign & Brief Generator")
+    st.markdown("اختر ترنداً صاعداً من القائمة أدناه ليقوم الذكاء الاصطناعي بصياغة **ملخص حملة ومؤثرين (Influencer Brief)** جاهز للإرسال الفوري لصناع المحتوى:")
     
     if not filtered_df.empty:
         trend_options = filtered_df['raw_content'].tolist()
-        selected_trend_text = st.selectbox("اختر الترند لصناعة المحتوى:", trend_options[:20])
+        selected_trend_text = st.selectbox("اختر الترند لبناء الحملة الإعلانية:", trend_options[:20])
         
-        if st.button("✨ توليد فكرة وسكريبت فيديو (Claude)"):
-            with st.spinner("جاري صياغة سكريبت الفيديو الإبداعي..."):
-                st.success("✅ تم توليد محتوى الفيديو بنجاح!")
-                st.markdown(f"### 🎯 سكريبت مقترح للترند:")
-                st.info(f"**العنوان/المحتوى الأصلي:** {selected_trend_text}")
+        if st.button("✨ توليد Brief حملة المؤثرين الاحترافي (Claude AI)"):
+            with st.spinner("جاري تصميم خطة حملة المؤثرين وبريف العمل..."):
+                st.success("✅ تم توليد بريف الحملة بنجاح!")
+                st.markdown(f"### 📋 Influencer Campaign Brief")
+                st.info(f"**الترند المستهدف:** {selected_trend_text}")
                 st.markdown(f"""
-                - **🎥 نوع الفيديو:** TikTok / Instagram Reel (قصير سريع).
-                - **⚡ خطاف الجذب (Hook - أول 3 ثوانٍ):** "أبرز هبة جديدة في المدينة المستهدفة.. لا تفوتكم التجربة!".
-                - **📝 المشاهد البصرية:** تصوير مدخل المكان، لقطة قريبة للطلب، وتقييم الطعم بصوت واقعي.
-                - **🗣️ التعليق الصوتي (Voiceover):** "يا جماعة الخير طاحوا الناس في هبة الترند هذا، المكان خيالي واللذاذة فولكلورية، أنصحكم تزورونه اليوم!".
-                - **🏷️ الهاشتاجات المقترحة:** `#هبات_السعودية` `#كافيهات_الرياض` `#مطاعم_جدة` `#ترند` `#اكسبلور`
+                ---
+                - **🎯 أهداف الحملة (Campaign Objectives):** ركوب موجة الترند الحالي، وزيادة الوعي بالعلامة التجارية، وتحفيز الزيارات الميدانية الفورية.
+                - **👥 نوع المؤثرين المستهدفين:** صانعو محتوى F&B محليون في المدينة المستهدفة (تغطيات مطاعم وكافيهات).
+                - **⚡ خطاف الجذب الإبداعي (Hook - أول 3 ثوانٍ):** *"لا يفوتكم! هبة الترند الجديد وصلت رسمياً.. تعالوا نشوف الطعم يستاهل الزحمة ولا لا؟"*
+                - **📝 التعليمات البصرية للمؤثر (Visual Guidelines):**
+                  1. لقطة واسعة لمدخل المكان أو طابور الانتظار لإثبات الإقبال الجماهيري.
+                  2. لقطة مقربة جداً (Macro Shot) لحظة صب الصوص أو تجهيز الطلب.
+                  3. رد فعل عفوي وصادق عند تذوق أول لقمة.
+                - **🗣️ رسالة الحملة الأساسية (Key Message):** *"التجربة فريدة وفعلاً تستاهل الهبة، والمكان أضاف لمسة جديدة كليا للسوق المحلي."*
+                - **🏷️ الهاشتاجات الإلزامية:** `#هبات_السعودية` `#كافيهات_السعودية` `#ترند_الأكل` `#تجارب_تيك_توك`
+                ---
                 """)
 
     st.markdown("---")
