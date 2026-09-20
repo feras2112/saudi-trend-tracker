@@ -33,17 +33,27 @@ def load_data():
         st.error(f"Error connecting to database: {e}")
         return pd.DataFrame()
 
+def extract_city(text):
+    """
+    استخراج المدينة السعودية المستهدفة تلقائياً من محتوى المنشور
+    """
+    text_lower = str(text).lower()
+    if any(city in text_lower for city in ['الرياض', 'riyadh', 'العاصمة']):
+        return 'الرياض 🏙️'
+    elif any(city in text_lower for city in ['جدة', 'jeddah', 'العروس']):
+        return 'جدة 🌊'
+    elif any(city in text_lower for city in ['الشرقية', 'الخبر', 'الدمام', 'dammam', 'khobar']):
+        return 'المنطقة الشرقية 🛢️'
+    elif any(city in text_lower for city in ['مكة', 'المملكة', 'المدينه', 'المدينة']):
+        return 'مكة / المدينة 🕌'
+    else:
+        return 'عام / أخرى 🇸🇦'
+
 def calculate_viral_score(row):
-    """
-    خوارزمية ذكية لحساب درجة الفيروسية (Viral Score من 0 إلى 100)
-    بناءً على المنصة، كلمات الهبة القوية، والزخم التفاعلي.
-    """
     text = str(row.get('raw_content', '')).lower()
     source = str(row.get('source_name', '')).lower()
     
-    score = 40  # قاعدة ابتدائية
-    
-    # وزن المنصة (تيك توك وانستقرام أقوى في الفيروسية البصرية)
+    score = 40
     if 'tiktok' in source:
         score += 25
     elif 'instagram' in source:
@@ -51,7 +61,6 @@ def calculate_viral_score(row):
     elif 'x' in source or 'twitter' in source:
         score += 15
         
-    # كلمات الهبة القوية جداً التي ترفع درجة الانتشار
     hype_keywords = [
         'هبة', 'زحمة', 'لازم', 'يجربون', 'يفوز', 'لذيذ', 'طابور', 'جديد', 
         'افتتاح', 'ترند', 'ماتشا', 'شوكليت', 'تجارب', 'قنبلة', 'العالمي'
@@ -59,7 +68,6 @@ def calculate_viral_score(row):
     matches = sum(1 for kw in hype_keywords if kw in text)
     score += (matches * 7)
     
-    # تقييد النطاق بين 10 و 100
     return max(10, min(100, score))
 
 def get_viral_badge(score):
@@ -70,48 +78,59 @@ def get_viral_badge(score):
     else:
         return f"🌱 Early Signal ({score}/100)"
 
-st.title("🇸🇦 Viral Saudi F&B & Cafe Trend Tracker (TikTok, Instagram, X)")
-st.markdown("Monitor real-time Saudi social signals, viral cafe crazes, restaurant openings, and influencer food trends.")
+st.title("🇸🇦 Viral Saudi F&B & Cafe Trend Tracker (Marketer Edition)")
+st.markdown("Monitor real-time Saudi social signals, viral cafe crazes, and influencer food trends with geo-targeting.")
 
 df = load_data()
 
 if df.empty:
     st.warning("No trends found in the database yet. Run your RSS collector to fetch fresh Saudi social data!")
 else:
-    # حساب درجات الفيروسية لكل السجلات
+    # حساب الفيروسية والمدينة لكل السجلات
     df['viral_score'] = df.apply(calculate_viral_score, axis=1)
     df['viral_badge'] = df['viral_score'].apply(get_viral_badge)
+    df['target_city'] = df['raw_content'].apply(extract_city)
 
-    st.sidebar.header("🔍 Filter Social Trends")
+    st.sidebar.header("🔍 Filter Social Trends (Marketer Tools)")
+    
+    # 1. فلتر المنصة
     sources = ["All"] + list(df['source_name'].dropna().unique())
     selected_source = st.sidebar.selectbox("Filter by Platform", sources)
     
+    # 2. فلتر المدينة الجديد (Geo-Targeting)
+    cities = ["All"] + list(df['target_city'].dropna().unique())
+    selected_city = st.sidebar.selectbox("📍 Filter by Saudi City", cities)
+
+    # 3. فلتر التصنيف
     categories = ["All"] + list(df['suggested_category'].dropna().unique())
     selected_category = st.sidebar.selectbox("Filter by Trend Type", categories)
 
     filtered_df = df.copy()
     if selected_source != "All":
         filtered_df = filtered_df[filtered_df['source_name'] == selected_source]
+    if selected_city != "All":
+        filtered_df = filtered_df[filtered_df['target_city'] == selected_city]
     if selected_category != "All":
         filtered_df = filtered_df[filtered_df['suggested_category'] == selected_category]
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Social Signals", len(df))
     col2.metric("Filtered Results", len(filtered_df))
-    col3.metric("🔥 Hot Viral Crazes (>75)", len(df[df['viral_score'] >= 75]))
+    col3.metric("🔥 Hot Viral Crazes (>75)", len(filtered_df[filtered_df['viral_score'] >= 75]))
 
     st.markdown("---")
 
-    st.subheader("📊 Live Saudi F&B Trends & Direct Source Links")
+    st.subheader("📊 Live Saudi F&B Trends & Geo Breakdown")
     
-    # تجهيز جدول العرض مع الروابط المباشرة ودرجة الفيروسية
-    display_df = filtered_df[['observation_id', 'source_name', 'viral_badge', 'raw_content', 'source_url', 'date_logged']].copy()
+    # تجهيز جدول العرض مع عمود المدينة الجديد والروابط المباشرة
+    display_df = filtered_df[['observation_id', 'target_city', 'source_name', 'viral_badge', 'raw_content', 'source_url', 'date_logged']].copy()
     
     st.dataframe(
         display_df,
         width='stretch',
         hide_index=True,
         column_config={
+            "target_city": "📍 City / Region",
             "source_url": st.column_config.LinkColumn("🔗 Direct Source Link", display_text="Open Content ↗️"),
             "viral_badge": "🔥 Viral Strength"
         }
@@ -134,10 +153,10 @@ else:
                 st.info(f"**العنوان/المحتوى الأصلي:** {selected_trend_text}")
                 st.markdown(f"""
                 - **🎥 نوع الفيديو:** TikTok / Instagram Reel (قصير سريع).
-                - **⚡ خطاف الجذب (Hook - أول 3 ثوانٍ):** "أبرز هبة جديدة في الرياض/جدة.. لا تفوتكم التجربة!".
-                - **📝 المشاهد البصرية:** تصوير مدخل المكان، لقطة قريبة للطلب (ماتشا أو حلى)، وتقييم الطعم بصوت واقعي.
-                - **🗣️ التعليق الصوتي (Voiceover):** "يا جماعة الخير طاحوا الناس في هبة [اسم الترند]، المكان خيالي واللذاذة فولكلورية، أنصحكم تزورونه اليوم قبل زحمة العيد!".
-                - **🏷️ الهاشتاجات المقترحة:** `#هبات_الرياض` `#كافيهات_جدة` `#ماتشا` `#ترند_السعودية` `#اكسبلور`
+                - **⚡ خطاف الجذب (Hook - أول 3 ثوانٍ):** "أبرز هبة جديدة في المدينة المستهدفة.. لا تفوتكم التجربة!".
+                - **📝 المشاهد البصرية:** تصوير مدخل المكان، لقطة قريبة للطلب، وتقييم الطعم بصوت واقعي.
+                - **🗣️ التعليق الصوتي (Voiceover):** "يا جماعة الخير طاحوا الناس في هبة الترند هذا، المكان خيالي واللذاذة فولكلورية، أنصحكم تزورونه اليوم!".
+                - **🏷️ الهاشتاجات المقترحة:** `#هبات_السعودية` `#كافيهات_الرياض` `#مطاعم_جدة` `#ترند` `#اكسبلور`
                 """)
 
     st.markdown("---")
