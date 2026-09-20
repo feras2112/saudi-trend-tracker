@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+  <title>Sample Feed — for local demo/testing only, not a real news source</title>
+  <link>https://example.invalid/</link>
+  <description>Fixture data to prove the collector's parsing/dedup logic without network access.</description>
+
+  <item>
+    <title>Riyadh café chain expands specialty coffee menu</title>
+    <link>https://example.invalid/articles/riyadh-cafe-expansion-001</link>
+    <description>A sample article body standing in for a real news item, used only to test that the collector extracts title, link, and date correctly.</description>
+    <pubDate>Mon, 08 Sep 2026 09:00:00 GMT</pubDate>
+  </item>
+
+  <item>
+    <title>Saudi F&amp;B investment activity picks up in Q3</title>
+    <link>https://example.invalid/articles/saudi-fb-investment-q3</link>
+    <description>Second fixture item, used to confirm the collector correctly processes multiple entries in one run.</description>
+    <pubDate>Wed, 10 Sep 2026 14:30:00 GMT</pubDate>
+  </item>
+
+</channel>
+</rss>
