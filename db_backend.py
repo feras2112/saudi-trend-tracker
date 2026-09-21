@@ -28,7 +28,9 @@ def get_unreviewed(limit=50):
             ORDER BY date_logged ASC
             LIMIT %s
         """, (limit,))
-        return cur.fetchall()
+        rows = cur.fetchall()
+    conn.close()
+    return rows
 
 
 def write_suggestion(observation_id, suggestion: dict):
@@ -70,7 +72,9 @@ def get_review_queue(limit=50):
             ORDER BY suggestion_generated_at ASC
             LIMIT %s
         """, (limit,))
-        return cur.fetchall()
+        rows = cur.fetchall()
+    conn.close()
+    return rows
 
 
 def confirm_row(observation_id, geographic_subject, temporal_status,
