@@ -1,4 +1,5 @@
 import os
+import re
 import streamlit as st
 import psycopg2
 import pandas as pd
@@ -13,7 +14,13 @@ st.set_page_config(
 def get_db_connection():
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
-        db_url = "postgresql://neondb_owner:npg_ZVfq6iU1MHxS@ep-withered-hall-b53kzk5r-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+        try:
+            db_url = st.secrets["DATABASE_URL"]
+        except Exception:
+            db_url = None
+    if not db_url:
+        st.error("DATABASE_URL غير مضبوط. أضفه في Streamlit Cloud: Settings → Secrets.")
+        st.stop()
     return psycopg2.connect(db_url)
 
 @st.cache_data(ttl=5)
@@ -21,9 +28,11 @@ def load_data():
     try:
         conn = get_db_connection()
         query = """
-            SELECT observation_id, source_name, source_url, raw_content, 
-                   date_logged, suggested_category, sentiment, reviewer_confirmed
+            SELECT observation_id, source_name, source_url, raw_content,
+                   date_logged, suggested_category, sentiment, reviewer_confirmed,
+                   suggestion_note, suggested_geographic_subject
             FROM trend_observations
+            WHERE COALESCE(suggested_category, '') <> 'Not Relevant'
             ORDER BY date_logged DESC;
         """
         df = pd.read_sql(query, conn)
@@ -51,7 +60,13 @@ def calculate_viral_score(row):
     source = str(row.get('source_name', '')).lower()
     
     score = 40
-    if 'tiktok' in source:
+    if 'google trends' in source:
+        score += 25
+        m = re.search(r'\(([\d,\.]+)([KM]?)\+? بحث', str(row.get('raw_content', '')))
+        if m:
+            n = float(m.group(1).replace(',', '')) * {'': 1, 'K': 1_000, 'M': 1_000_000}[m.group(2)]
+            score += 30 if n >= 200_000 else 20 if n >= 50_000 else 10 if n >= 10_000 else 0
+    elif 'tiktok' in source:
         score += 25
     elif 'instagram' in source:
         score += 25
@@ -81,7 +96,7 @@ st.markdown("Monitor real-time Saudi social signals, viral cafe crazes, and infl
 df = load_data()
 
 if df.empty:
-    df = pd.DataFrame(columns=['observation_id', 'source_name', 'source_url', 'raw_content', 'date_logged', 'suggested_category', 'sentiment', 'reviewer_confirmed'])
+    df = pd.DataFrame(columns=['observation_id', 'source_name', 'source_url', 'raw_content', 'date_logged', 'suggested_category', 'sentiment', 'reviewer_confirmed', 'suggestion_note', 'suggested_geographic_subject'])
 
 # hide anything Claude classified as not relevant (news, politics, religion, sports...)
 df = df[df['suggested_category'] != 'Not Relevant'].copy()
@@ -170,12 +185,14 @@ st.markdown("---")
 st.subheader("📊 Live Saudi F&B Trends & Geo Breakdown")
 
 if not filtered_df.empty:
-    display_df = filtered_df[['observation_id', 'target_city', 'source_name', 'viral_badge', 'raw_content', 'source_url', 'date_logged']].copy()
+    display_df = filtered_df[['suggested_category', 'suggestion_note', 'target_city', 'source_name', 'viral_badge', 'raw_content', 'source_url', 'date_logged']].copy()
     st.dataframe(
         display_df,
         width='stretch',
         hide_index=True,
         column_config={
+            "suggested_category": "🏷️ النوع",
+            "suggestion_note": "📝 وش الترند (Claude)",
             "target_city": "📍 City / Region",
             "source_url": st.column_config.LinkColumn("🔗 Direct Source Link", display_text="Open Content ↗️"),
             "viral_badge": "🔥 Viral Strength"
@@ -219,7 +236,7 @@ with st.form("social_trend_form"):
     new_content = st.text_area("Viral Trend Content (e.g., هبة شاي ماتشا الرياض الجديد, ترند كوفي جدة)")
     direct_url = st.text_input("Direct Source Link (e.g., https://www.tiktok.com/@user/video/...)", "https://www.tiktok.com")
     platform = st.selectbox("Platform", ["TikTok Saudi (F&B)", "Instagram Reels SA", "X (Twitter) F&B"])
-    trend_category = st.selectbox("Category", ["Food & Drink / Viral Cafe", "Dessert & Pastry", "Beverage / Matcha", "Restaurant Opening"])
+    trend_category = st.selectbox("Category", ["F&B", "Coffee", "Celebrity", "Event", "Music", "Fashion"])
     submit_button = st.form_submit_button("Ingest Viral Trend")
     
     if submit_button and new_content:
