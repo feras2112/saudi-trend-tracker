@@ -83,6 +83,9 @@ df = load_data()
 if df.empty:
     df = pd.DataFrame(columns=['observation_id', 'source_name', 'source_url', 'raw_content', 'date_logged', 'suggested_category', 'sentiment', 'reviewer_confirmed'])
 
+# hide anything Claude classified as not relevant (news, politics, religion, sports...)
+df = df[df['suggested_category'] != 'Not Relevant'].copy()
+
 df['viral_score'] = df.apply(calculate_viral_score, axis=1)
 df['viral_badge'] = df['viral_score'].apply(get_viral_badge)
 df['target_city'] = df['raw_content'].apply(extract_city)
