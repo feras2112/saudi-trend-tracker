@@ -69,6 +69,7 @@ def get_review_queue(limit=50):
             FROM TREND_OBSERVATIONS
             WHERE reviewer_confirmed = FALSE
               AND suggested_geographic_subject IS NOT NULL
+              AND COALESCE(suggested_category, '') <> 'Not Relevant'
             ORDER BY suggestion_generated_at ASC
             LIMIT %s
         """, (limit,))
